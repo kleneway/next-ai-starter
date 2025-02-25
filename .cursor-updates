@@ -6,3 +6,8 @@
 - Fixed dynamic route warning by adding force-dynamic config to root page
 - Added Storybook with Button component and stories, updated .cursorrules with Storybook guidelines
 - Captured screenshot of Button component stories in Storybook
+- Fixed CSS processing issues by removing type:module from package.json and updating config files to CommonJS format.
+- Converted postcss.config.mjs, next.config.mjs, and tailwind.config.ts to CommonJS (.js) with correct syntax.
+- Configured local SQLite database for development instead of PostgreSQL.
+- Added .env file with basic development settings.
+- Fixed build errors by installing missing Storybook dependencies.

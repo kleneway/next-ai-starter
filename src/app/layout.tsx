@@ -1,5 +1,6 @@
 import React from "react";
 import "@/app/globals.css";
+import "react-datepicker/dist/react-datepicker.css";
 import "react-toastify/dist/ReactToastify.css";
 import { TRPCReactProvider } from "@/lib/trpc/react";
 import { Metadata } from "next";

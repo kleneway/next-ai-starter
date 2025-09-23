@@ -1,48 +1,22 @@
 /**
- * AI Client Library
+ * AI provider facade coordinating OpenAI, Perplexity, and Gemini chat completions.
  *
- * This module provides a unified interface for interacting with various AI models
- * including OpenAI, Perplexity, and Google's Gemini models.
+ * Key Behaviors:
+ * - Routes model identifiers to the proper provider client; normalizes Gemini calls via generateGeminiWebResponse.
+ * - Uses OpenAI Responses API for GPT-5 with optional reasoning/text parameters.
  *
- * Primary Functions:
+ * Inputs/Outputs:
+ * - Inputs: env OPENAI_API_KEY, PERPLEXITY_API_KEY, GEMINI_API_KEY; chat message history.
+ * - Outputs: text reply string; Gemini responses may include sourceLink metadata.
  *
- * 1. generateChatCompletion(messages, model = "O1", options = {})
- *    - Main function for general AI interactions
- *    - Automatically handles routing to appropriate AI provider
- *    - Use for standard chat completions, idea generation, etc.
- *    Example:
- *    ```typescript
- *    const response = await generateChatCompletion([
- *      { role: "user", content: "Generate a business idea" }
- *    ]);
- *    ```
+ * Dependencies:
+ * - openai SDK, @google/generative-ai, global fetch for Responses API requests.
  *
- * 2. generateGeminiWebResponse(messages, model, ground = true)
- *    - Specialized function for Gemini models with web grounding
- *    - Returns both response text and source links
- *    - Use when you need factual, web-grounded responses
- *    Example:
- *    ```typescript
- *    const { text, sourceLink } = await generateGeminiWebResponse([
- *      { role: "user", content: "What's new in AI?" }
- *    ], "GEMINI_FLASH_WEB", true);
- *    ```
+ * Side Effects:
+ * - Issues outbound HTTPS calls to third-party AI providers; logs errors on failure.
  *
- * 3. parseJsonResponse(response)
- *    - Utility to parse JSON from AI responses
- *    - Handles both direct JSON and code block formats
- *    - Use when expecting structured data from AI
- *    Example:
- *    ```typescript
- *    const data = parseJsonResponse(aiResponse);
- *    ```
- *
- * Available Models:
- * - O1: Default model for most use cases
- * - SONNET: Claude 3.5 Sonnet for complex reasoning
- * - PERPLEXITY_SMALL/LARGE: For web-aware responses
- * - GEMINI_FLASH_WEB: For web-grounded responses
- * - GEMINI_FLASH_THINKING: For complex reasoning tasks
+ * Recent Changes:
+ * - 2025-09-23: Added GPT-5 Responses API bridge and Gemini 2.5 model support.
  */
 
 import OpenAI from "openai";
@@ -64,17 +38,66 @@ type AIClientResponse = {
 };
 
 export const AI_MODELS = {
-  SONNET: "claude-3-5-sonnet-20241022",
+  SONNET: "claude-sonnet-4-20250514",
   O1: "o1-2024-12-17",
+  GPT_5: "gpt-5",
   GPT_4O: "gpt-4o",
   GPT_4O_MINI: "gpt-4o-mini",
   PERPLEXITY_SMALL: "sonar",
   PERPLEXITY_LARGE: "sonar-pro",
   GEMINI_FLASH_WEB: "gemini-2.0-flash-exp",
   GEMINI_FLASH_THINKING: "gemini-2.0-flash-thinking-exp-01-21",
+  GEMINI_PRO: "gemini-2.5-pro",
+  GEMINI_FLASH: "gemini-2.5-flash",
 } as const;
 
 export type AIModel = keyof typeof AI_MODELS;
+
+type GPT5ReasoningEffort = "minimal" | "low" | "medium" | "high";
+
+export type GenerateChatCompletionOptions =
+  Partial<OpenAI.ChatCompletionCreateParamsNonStreaming> & {
+    reasoning?: { effort: GPT5ReasoningEffort };
+    text?: { verbosity: "low" | "medium" | "high" };
+  };
+
+type ResponsesApiTextContent = {
+  type: string;
+  text?: string;
+};
+
+type ResponsesApiOutputItem = {
+  content?: ResponsesApiTextContent[];
+};
+
+type ResponsesApiResult = {
+  output_text?: string;
+  output?: ResponsesApiOutputItem[];
+};
+
+function extractResponseOutputText(response: ResponsesApiResult): string {
+  if (typeof response.output_text === "string") {
+    return response.output_text;
+  }
+
+  if (!Array.isArray(response.output)) {
+    return "";
+  }
+
+  return response.output
+    .map((item) => {
+      if (!Array.isArray(item.content)) {
+        return "";
+      }
+
+      return item.content
+        .map((block) =>
+          block && typeof block.text === "string" ? block.text : "",
+        )
+        .join("");
+    })
+    .join("");
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -163,10 +186,11 @@ export function parseJsonResponse(response: string): any {
 export async function generateChatCompletion(
   messages: Array<{ role: "user" | "system" | "assistant"; content: string }>,
   model: AIModel = "O1",
-  additionalOptions: Partial<OpenAI.ChatCompletionCreateParamsNonStreaming> = {},
+  additionalOptions: GenerateChatCompletionOptions = {},
 ): Promise<string> {
   try {
     const modelId = AI_MODELS[model];
+    const { reasoning, text, ...chatOptions } = additionalOptions;
 
     // Handle Gemini models directly
     if (modelId.includes("gemini")) {
@@ -178,12 +202,45 @@ export async function generateChatCompletion(
       return geminiResp.text;
     }
 
+    if (modelId.startsWith("gpt-5")) {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OPENAI_API_KEY is not configured");
+      }
+
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: modelId,
+          input: messages.map((message) => ({
+            role: message.role,
+            content: [{ type: "text", text: message.content }],
+          })),
+          ...(reasoning ? { reasoning } : {}),
+          ...(text ? { text } : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(
+          `GPT-5 response API error: ${response.status} ${errorBody}`,
+        );
+      }
+
+      const result = (await response.json()) as ResponsesApiResult;
+      return extractResponseOutputText(result);
+    }
+
     // Handle OpenAI and Perplexity models
     const { client } = getClientForModel(model);
     const options: OpenAI.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
       messages,
-      ...additionalOptions,
+      ...chatOptions,
     };
 
     const completion = await client.chat.completions.create(options);

@@ -1,0 +1,39 @@
+# Agent Helpers
+
+This directory is exclusively for AI agent operations.
+
+## Documentation
+
+- Refer to the `docs` folder for additional documents provided by the user.
+- These are typically documents about 3rd-party SDKs or API guides, especially for new versions of libraries that are not yet in your training data.
+- If you search the web for information and find relevant documentation that might be helpful for future agents, you may add it to the `docs` folder. You MUST include the source URL in the file.
+
+## Logs
+
+- Access recent logs shared by the user for debugging purposes.
+
+## Sample Code
+
+- This is a place for the user to put working sample code files that the agent can use as a reference.
+- Do not write to this folder, it is only for the user to place example code files.
+
+## Tasks
+
+- Follow the task checklists provided by the user.
+- Complete each task item thoroughly and efficiently.
+- Avoid interrupting the user unless absolutely necessary.
+- Mark tasks as complete once finished and proceed to the next item. This is very important!
+- Your primary objective is to complete all tasks effectively without user interruption.
+
+## Scratchpad
+
+- This scratchpad.md file is a place for you to write down your thoughts and ideas for a given session.
+- This can specifically be helpful for doing refactors in order to keep the older code written down so you can refer back to it if needed to move or as a check for later.
+- Be sure to clean up the scratchpad after you are done with it.
+- This is entirely optional
+
+## Instructions
+
+- This folder will act as a memory system for you, the agent. You can put any files here that you want future agents to have access to.
+- It is important to remember that agents DO NOT have the most up to date information. They have a training date cutoff that is always in the past, sometimes by several years. It is CRITICAL that you use the internet to find the most up to date information, especially if there is a typescript issue that conflicts with your knowledge of an NPM package. When you complete a search and find new information, you should either update or add files.
+- This folder is for you! Use it however you think will be most helpful for you and future agents. Remember that unlike humans, agents do not have memory of any prior tasks and are always starting from scratch. This is a way for you to carry through your work and help future agents continually improve. But also remember that agents have a limited context window and too much information will have a negative impact on their performance. Be helpful to future agents by documenting only the most important information, not too much, not too little.

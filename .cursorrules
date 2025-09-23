@@ -59,7 +59,7 @@ Inngest / Background Jobs
 AI
 
 - Use `generateChatCompletion` in `src/lib/aiClient.ts` for all AI calls.
-- Prefer `O1` model with high reasoning effort for all AI calls.
+- Prefer `GPT-5` model for all AI calls.
 
 Storybook
 
@@ -70,11 +70,11 @@ Storybook
 - Test interactive features with actions.
 - Use relative imports from component directory.
 
-Tools
+Agent Helpers
 
-- When you make a change to the UI, use the `screenshot` tool to show the changes.
-- If the user asks for a complex task to be performed, find any relevant files and call the `architect` tool to get a plan and show it to the user. Use this plan as guidance for the changes you make, but maintain the existing patterns and structure of the codebase.
-- After a complex task is performed, use the `codeReview` tool create a diff and use the diff to conduct a code review of the changes.
+- Refer to the `agent-helpers` folder for additional instructions and tools.
+- Use the `agent-helpers` folder to store any files that you want future agents to have access to.
+- Start with `agent-helpers/README.md` for instructions.
 
 Additional
 
@@ -85,6 +85,3 @@ Additional
 IMPORTANT:
 
 - After all changes are made, ALWAYS build the project with `npm run build`. Ignore warnings, fix errors.
-- Always add a one-sentence summary of changes to `.cursor-updates` file in markdown format at the end of every agent interaction.
-- If you forget, the user can type the command "finish" and you will run the build and update `.cursor-updates`.
-- Finally, update git with `git add . && git commit -m "..."`. Don't push.

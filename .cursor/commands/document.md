@@ -1,4 +1,4 @@
-#document
+# document
 
 For every file that has been created or edited, check the top-of-file documentation. If it exists, update it so it reflects the current state of the file. If it doesn’t exist, create a new header. Always use the comment syntax appropriate to the file type.
 

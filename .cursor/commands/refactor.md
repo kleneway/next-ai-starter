@@ -1,4 +1,4 @@
-#refactor
+# refactor
 
 After completing work, review the changes to the repository and refactor the code to make it easier for AI agents to navigate in the future. Use git diff only to identify which files were changed and their directly related modules. Focus refactoring on this set. Do not commit, stage, or build—only read from git as needed.
 

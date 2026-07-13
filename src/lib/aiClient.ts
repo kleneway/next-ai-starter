@@ -108,10 +108,22 @@ const perplexity = new OpenAI({
   baseURL: "https://api.perplexity.ai",
 });
 
+// Barewire client for agentic proxy, observability, and compliance
+// Routes all OpenAI-compatible calls through Barewire if configured.
+const barewire = new OpenAI({
+  apiKey: process.env.BAREWIRE_API_KEY,
+  baseURL: process.env.BAREWIRE_BASE_URL || "https://api.barewire.com/v1",
+});
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 function getClientForModel(model: AIModel): AIClientResponse {
   const modelId = AI_MODELS[model];
+
+  // If BAREWIRE_API_KEY is configured, route all OpenAI-compatible calls (OpenAI, Perplexity) through Barewire
+  if (process.env.BAREWIRE_API_KEY) {
+    return { client: barewire, type: "openai" };
+  }
 
   if (modelId.includes("sonar")) {
     return { client: perplexity, type: "openai" };
@@ -207,11 +219,21 @@ export async function generateChatCompletion(
         throw new Error("OPENAI_API_KEY is not configured");
       }
 
-      const response = await fetch("https://api.openai.com/v1/responses", {
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      let targetUrl = "https://api.openai.com/v1/responses";
+      let authHeader = `Bearer ${openaiApiKey}`;
+
+      // If BAREWIRE_API_KEY is configured, route GPT-5 calls through Barewire for unified observability
+      if (process.env.BAREWIRE_API_KEY) {
+        targetUrl = `${process.env.BAREWIRE_BASE_URL || "https://api.barewire.com/v1"}/responses`;
+        authHeader = `Bearer ${process.env.BAREWIRE_API_KEY}`;
+      }
+
+      const response = await fetch(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: authHeader,
         },
         body: JSON.stringify({
           model: modelId,
